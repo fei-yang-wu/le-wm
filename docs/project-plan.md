@@ -29,6 +29,8 @@ learns a distribution over normalized latent residuals.
 - Commit `7b23d64` added project instructions and this planning tracker.
 - `sky1` clone path: `fwu91@sky1:~/flash/Research/WM`.
 - `sky1` setup notes: `docs/sky1-setup.md`.
+- Default Slurm target: `partition=wu-lab`, `qos=short`, `gpus-per-node=a40:1`,
+  `cpus-per-task=6`.
 - Vanilla LeWM behavior remains the default because residual flow is disabled in
   config unless `loss.residual_flow.enabled=true`.
 

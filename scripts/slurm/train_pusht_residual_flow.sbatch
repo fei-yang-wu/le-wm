@@ -2,11 +2,13 @@
 #SBATCH --job-name=lewm-rflow-pusht
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
+#SBATCH --partition=wu-lab
+#SBATCH --qos=short
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
-#SBATCH --gres=gpu:1
-#SBATCH --mem=64G
+#SBATCH --cpus-per-task=6
+#SBATCH --gpus-per-node=a40:1
+#SBATCH --mem-per-gpu=64G
 #SBATCH --time=12:00:00
 
 set -euo pipefail
@@ -44,5 +46,6 @@ if [[ -n "${EXTRA_OVERRIDES:-}" ]]; then
   OVERRIDES+=("${EXTRA_ARGS[@]}")
 fi
 
-python -c 'import torch; print("cuda_available=", torch.cuda.is_available()); print("device_count=", torch.cuda.device_count())'
-python train.py "${OVERRIDES[@]}"
+SLURM_BIN="${SLURM_BIN:-/opt/slurm/Ubuntu-20.04/current/bin}"
+"$SLURM_BIN/srun" -u python -u -c 'import torch; print("cuda_available=", torch.cuda.is_available()); print("device_count=", torch.cuda.device_count())'
+"$SLURM_BIN/srun" -u python -u train.py "${OVERRIDES[@]}"

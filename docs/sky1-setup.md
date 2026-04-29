@@ -28,6 +28,15 @@ Important commands:
 /opt/slurm/Ubuntu-20.04/current/bin/sbatch
 ```
 
+Default job settings for this project:
+
+```text
+partition: wu-lab
+qos: short
+gpu: a40:1
+cpus-per-task: 6
+```
+
 ## Environment Setup
 
 From `~/flash/Research/WM`:
@@ -74,10 +83,11 @@ Use a smaller batch size for lower-memory GPUs:
 BATCH_SIZE=32 scripts/slurm/submit_pusht_residual_flow.sh
 ```
 
-Pass Slurm options before the script path via the submit helper:
+Pass Slurm options before the script path via the submit helper if you need to
+override defaults:
 
 ```bash
-scripts/slurm/submit_pusht_residual_flow.sh --partition=gpu --time=06:00:00
+scripts/slurm/submit_pusht_residual_flow.sh --time=06:00:00
 ```
 
 Pass extra Hydra overrides through `EXTRA_OVERRIDES`:

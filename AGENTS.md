@@ -98,6 +98,9 @@ Slurm smoke job on `sky1`:
 scripts/slurm/submit_smoke_import.sh
 ```
 
+The default `sky1` Slurm target is `partition=wu-lab`, `qos=short`,
+`gpus-per-node=a40:1`, and `cpus-per-task=6`.
+
 ## Experiment Hygiene
 
 - Log dataset, commit hash, GPU type, batch size, epochs, residual-flow config,

@@ -2,11 +2,13 @@
 #SBATCH --job-name=lewm-smoke
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
+#SBATCH --partition=wu-lab
+#SBATCH --qos=short
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=2
-#SBATCH --gres=gpu:1
-#SBATCH --mem=16G
+#SBATCH --cpus-per-task=6
+#SBATCH --gpus-per-node=a40:1
+#SBATCH --mem-per-gpu=16G
 #SBATCH --time=00:10:00
 
 set -euo pipefail
@@ -25,5 +27,6 @@ source .venv/bin/activate
 
 hostname
 nvidia-smi -L || true
-python -c 'import torch; print("torch=", torch.__version__); print("cuda_available=", torch.cuda.is_available()); print("device_count=", torch.cuda.device_count())'
-python -c 'import train; import residual_flow; print("train import ok")'
+SLURM_BIN="${SLURM_BIN:-/opt/slurm/Ubuntu-20.04/current/bin}"
+"$SLURM_BIN/srun" -u python -u -c 'import torch; print("torch=", torch.__version__); print("cuda_available=", torch.cuda.is_available()); print("device_count=", torch.cuda.device_count())'
+"$SLURM_BIN/srun" -u python -u -c 'import train; import residual_flow; print("train import ok")'
