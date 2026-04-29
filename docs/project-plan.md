@@ -26,6 +26,9 @@ learns a distribution over normalized latent residuals.
 - Working branch is `latent-residual-flow`.
 - Branch was pushed to the fork.
 - Commit `ca701a0` added the first latent residual-flow training scaffold.
+- Commit `7b23d64` added project instructions and this planning tracker.
+- `sky1` clone path: `fwu91@sky1:~/flash/Research/WM`.
+- `sky1` setup notes: `docs/sky1-setup.md`.
 - Vanilla LeWM behavior remains the default because residual flow is disabled in
   config unless `loss.residual_flow.enabled=true`.
 
@@ -47,6 +50,7 @@ learns a distribution over normalized latent residuals.
   - residual flow construction from Hydra config,
   - joint objective `LeWM loss + lambda_fm * residual_fm_loss`.
 - Added `config/train/lewm.yaml` options under `loss.residual_flow`.
+- Added Slurm helpers under `scripts/slurm/` for PushT residual-flow training.
 
 ## Verification So Far
 
@@ -155,6 +159,9 @@ python train.py data=pusht \
 ## Near-Term TODO
 
 - Resolve GPU-machine setup and dependency versions.
+- Confirmed `stable-worldmodel[train]` dependency install on `sky1` completes.
+- Confirmed `datasets>=2.20,<3` is needed on top of the base train install.
+- Submit a tiny Slurm smoke job on `sky1`.
 - Add a dedicated residual evaluation script.
 - Add a deterministic Gaussian residual baseline.
 - Expose stochastic planning in `get_cost` or evaluation config.

@@ -35,7 +35,12 @@ The training dependencies can be installed with:
 uv venv --python=3.10
 source .venv/bin/activate
 uv pip install 'stable-worldmodel[train]'
+uv pip install 'datasets>=2.20,<3'
 ```
+
+The explicit `datasets` upgrade is currently needed because
+`stable-pretraining==0.1.6` imports `datasets.config`, while uv may otherwise
+resolve an older `datasets==1.1.1` release that does not expose it.
 
 The full `stable-worldmodel[train,env]` extra may fail on newer Python packaging
 toolchains because of the legacy `gym==0.21` dependency. Use the train-only
@@ -85,6 +90,12 @@ Syntax check:
 
 ```bash
 python -m compileall jepa.py train.py residual_flow.py
+```
+
+Slurm smoke job on `sky1`:
+
+```bash
+scripts/slurm/submit_smoke_import.sh
 ```
 
 ## Experiment Hygiene
