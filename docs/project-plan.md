@@ -31,6 +31,8 @@ learns a distribution over normalized latent residuals.
 - `sky1` setup notes: `docs/sky1-setup.md`.
 - Default Slurm target: `partition=wu-lab`, `qos=short`, `gpus-per-node=a40:1`,
   `cpus-per-task=6`.
+- Overcap fallback: submit with `--partition=overcap --account=overcap` when
+  `wu-lab` is busy.
 - Vanilla LeWM behavior remains the default because residual flow is disabled in
   config unless `loss.residual_flow.enabled=true`.
 

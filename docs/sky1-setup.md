@@ -71,6 +71,12 @@ Submit a small import/GPU smoke job first:
 scripts/slurm/submit_smoke_import.sh
 ```
 
+If `wu-lab` is busy, submit to overcap instead:
+
+```bash
+scripts/slurm/submit_smoke_import.sh --partition=overcap --account=overcap
+```
+
 Submit the default residual-flow run:
 
 ```bash
@@ -88,6 +94,12 @@ override defaults:
 
 ```bash
 scripts/slurm/submit_pusht_residual_flow.sh --time=06:00:00
+```
+
+Overcap training fallback:
+
+```bash
+scripts/slurm/submit_pusht_residual_flow.sh --partition=overcap --account=overcap
 ```
 
 Pass extra Hydra overrides through `EXTRA_OVERRIDES`:
