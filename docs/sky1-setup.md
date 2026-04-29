@@ -123,6 +123,13 @@ EXTRA_OVERRIDES='loss.residual_flow.weight=0.3 output_model_name=lewm_rflow_w03'
   scripts/slurm/submit_pusht_residual_flow.sh
 ```
 
+Use `+` when adding a new Hydra key that is not already present in the config:
+
+```bash
+EXTRA_OVERRIDES='+trainer.limit_train_batches=2 +trainer.limit_val_batches=1' \
+  scripts/slurm/submit_pusht_residual_flow.sh --partition=overcap --account=overcap
+```
+
 Check jobs:
 
 ```bash
@@ -134,6 +141,8 @@ Logs are written under:
 ```text
 logs/
 ```
+
+Checkpoints are written under `data/<subdir>/`.
 
 ## Development Workflow
 

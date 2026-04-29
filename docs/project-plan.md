@@ -65,7 +65,11 @@ learns a distribution over normalized latent residuals.
   train-only dependencies.
 - Full `train.py` import was blocked by dependency/version friction in
   `stable-pretraining` and `datasets` on the local Mac environment.
-- Full training has not been run yet.
+- Full `train.py` import passes on `sky1` after upgrading to
+  `datasets==2.21.0`.
+- PushT dataset is downloaded under `data/pusht_expert_train.h5`.
+- Slurm smoke import job passed on overcap A40.
+- Tiny residual-flow training smoke passed on overcap A40.
 
 ## Recommended Compute
 
@@ -188,6 +192,35 @@ Training result:
 Evaluation result:
 Notes:
 Next action:
+```
+
+## Experiment Log
+
+```text
+Date: 2026-04-29
+Commit: fe29db85
+Machine/GPU: sky1 Slurm overcap, node shakey, 1x NVIDIA A40
+Dataset: PushT, data/pusht_expert_train.h5
+Command:
+  MAX_EPOCHS=1 BATCH_SIZE=16 NUM_WORKERS=2 \
+  EXTRA_OVERRIDES="+trainer.limit_train_batches=2 +trainer.limit_val_batches=1 output_model_name=lewm_rflow_smoke subdir=smoke_pusht_rflow" \
+  scripts/slurm/submit_pusht_residual_flow.sh --partition=overcap --account=overcap --time=00:30:00
+Checkpoint:
+  data/smoke_pusht_rflow/lewm_rflow_smoke_epoch_1_object.ckpt
+  data/smoke_pusht_rflow/lewm_rflow_smoke_weights.ckpt
+Training result:
+  Completed 2 train batches and 1 validation batch.
+  fit/loss: 35.2742
+  fit/pred_loss: 0.2305
+  fit/residual_fm_loss: 34.5769
+  validate/loss: 9.3510
+  validate/pred_loss: 0.0654
+  validate/residual_fm_loss: 8.6646
+Notes:
+  First job failed because new Hydra trainer keys require +trainer.* syntax.
+  Resubmitted with +trainer.limit_train_batches and +trainer.limit_val_batches.
+Next action:
+  Submit a short but real PushT residual-flow run, then add evaluation tooling.
 ```
 
 ## Key Design Decisions
