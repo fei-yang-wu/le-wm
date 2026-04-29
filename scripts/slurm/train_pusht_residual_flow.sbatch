@@ -17,8 +17,8 @@ REPO_DIR="${REPO_DIR:-$HOME/flash/Research/WM}"
 cd "$REPO_DIR"
 
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-8}"
-export STABLEWM_HOME="${STABLEWM_HOME:-$HOME/flash/Research/stable-wm}"
-export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/flash/Research/.cache}"
+export STABLEWM_HOME="${STABLEWM_HOME:-$REPO_DIR/data}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$STABLEWM_HOME/.cache}"
 export HF_HOME="${HF_HOME:-$XDG_CACHE_HOME/huggingface}"
 export MPLCONFIGDIR="${MPLCONFIGDIR:-$XDG_CACHE_HOME/matplotlib}"
 

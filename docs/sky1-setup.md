@@ -54,13 +54,27 @@ uv may resolve `datasets==1.1.1`, which fails with:
 ImportError: cannot import name 'config' from 'datasets'
 ```
 
-Use flash storage for datasets, checkpoints, and caches:
+Use project-local flash storage for datasets, checkpoints, and caches:
 
 ```bash
-export STABLEWM_HOME=$HOME/flash/Research/stable-wm
-export XDG_CACHE_HOME=$HOME/flash/Research/.cache
+export STABLEWM_HOME=$HOME/flash/Research/WM/data
+export XDG_CACHE_HOME=$STABLEWM_HOME/.cache
 export HF_HOME=$XDG_CACHE_HOME/huggingface
 export MPLCONFIGDIR=$XDG_CACHE_HOME/matplotlib
+```
+
+`data/` is ignored by git.
+
+Download and decompress the PushT dataset:
+
+```bash
+scripts/data/download_pusht.sh
+```
+
+Expected output file:
+
+```text
+data/pusht_expert_train.h5
 ```
 
 ## Submitting a First PushT Job
