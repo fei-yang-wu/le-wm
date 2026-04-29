@@ -17,6 +17,8 @@ class JEPA(nn.Module):
         action_encoder,
         projector=None,
         pred_proj=None,
+        residual_flow=None,
+        residual_scale=None,
     ):
         super().__init__()
 
@@ -25,6 +27,14 @@ class JEPA(nn.Module):
         self.action_encoder = action_encoder
         self.projector = projector or nn.Identity()
         self.pred_proj = pred_proj or nn.Identity()
+        self.residual_flow = residual_flow
+
+        if residual_scale is None:
+            residual_scale = torch.ones(1)
+        self.register_buffer("residual_scale", residual_scale.float())
+        self.register_buffer(
+            "residual_scale_initialized", torch.tensor(False, dtype=torch.bool)
+        )
 
     def encode(self, info):
         """Encode observations and actions into embeddings.
@@ -54,11 +64,63 @@ class JEPA(nn.Module):
         preds = rearrange(preds, "(b t) d -> b t d", b=emb.size(0))
         return preds
 
+    def residual_condition(self, emb, act_emb, pred_emb):
+        """Build the conditioning vector for the latent residual flow."""
+        return torch.cat([emb, act_emb, pred_emb], dim=-1)
+
+    @torch.no_grad()
+    def update_residual_scale(self, residual, decay: float = 0.99, eps: float = 1e-3):
+        """Track a diagonal residual whitening scale with an EMA."""
+        batch_scale = residual.detach().flatten(0, -2).std(dim=0, unbiased=False)
+        batch_scale = batch_scale.clamp_min(eps).to(self.residual_scale)
+
+        if not bool(self.residual_scale_initialized.item()):
+            self.residual_scale.copy_(batch_scale)
+            self.residual_scale_initialized.fill_(True)
+        else:
+            self.residual_scale.mul_(decay).add_(batch_scale, alpha=1.0 - decay)
+            self.residual_scale.clamp_(min=eps)
+
+    def normalize_residual(self, residual, eps: float = 1e-3):
+        scale = self.residual_scale.to(device=residual.device, dtype=residual.dtype)
+        return residual / scale.clamp_min(eps)
+
+    def sample_residual(self, pred_emb, condition, steps: int = 8, noise=None):
+        """Euler-sample a normalized residual and unwhiten it."""
+        if self.residual_flow is None:
+            raise RuntimeError("Residual flow is not attached to this JEPA model.")
+
+        z = torch.randn_like(pred_emb) if noise is None else noise
+        dt = 1.0 / steps
+        for i in range(steps):
+            tau = torch.full(
+                (*z.shape[:-1], 1),
+                (i + 0.5) * dt,
+                device=z.device,
+                dtype=z.dtype,
+            )
+            z = z + dt * self.residual_flow(tau, z, condition)
+
+        scale = self.residual_scale.to(device=z.device, dtype=z.dtype)
+        return z * scale.clamp_min(1e-3)
+
+    def predict_stochastic(self, emb, act_emb, steps: int = 8, noise=None):
+        pred_emb = self.predict(emb, act_emb)
+        condition = self.residual_condition(emb, act_emb, pred_emb)
+        return pred_emb + self.sample_residual(pred_emb, condition, steps, noise)
+
     ####################
     ## Inference only ##
     ####################
 
-    def rollout(self, info, action_sequence, history_size: int = 3):
+    def rollout(
+        self,
+        info,
+        action_sequence,
+        history_size: int = 3,
+        stochastic: bool = False,
+        flow_steps: int = 8,
+    ):
         """Rollout the model given an initial info dict and action sequence.
         pixels: (B, S, T, C, H, W)
         action_sequence: (B, S, T, action_dim)
@@ -90,7 +152,12 @@ class JEPA(nn.Module):
             act_emb = self.action_encoder(act)
             emb_trunc = emb[:, -HS:]  # (BS, HS, D)
             act_trunc = act_emb[:, -HS:]  # (BS, HS, A_emb)
-            pred_emb = self.predict(emb_trunc, act_trunc)[:, -1:]  # (BS, 1, D)
+            if stochastic and self.residual_flow is not None:
+                pred_emb = self.predict_stochastic(
+                    emb_trunc, act_trunc, steps=flow_steps
+                )[:, -1:]
+            else:
+                pred_emb = self.predict(emb_trunc, act_trunc)[:, -1:]  # (BS, 1, D)
             emb = torch.cat([emb, pred_emb], dim=1)  # (BS, T+1, D)
 
             next_act = act_future[:, t : t + 1, :]  # (BS, 1, action_dim)
@@ -100,7 +167,12 @@ class JEPA(nn.Module):
         act_emb = self.action_encoder(act)  # (BS, T, A_emb)
         emb_trunc = emb[:, -HS:]  # (BS, HS, D)
         act_trunc = act_emb[:, -HS:]  # (BS, HS, A_emb)
-        pred_emb = self.predict(emb_trunc, act_trunc)[:, -1:]  # (BS, 1, D)
+        if stochastic and self.residual_flow is not None:
+            pred_emb = self.predict_stochastic(
+                emb_trunc, act_trunc, steps=flow_steps
+            )[:, -1:]
+        else:
+            pred_emb = self.predict(emb_trunc, act_trunc)[:, -1:]  # (BS, 1, D)
         emb = torch.cat([emb, pred_emb], dim=1)
 
         # unflatten batch and sample dimensions

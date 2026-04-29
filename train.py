@@ -12,7 +12,43 @@ from omegaconf import OmegaConf, open_dict
 
 from jepa import JEPA
 from module import ARPredictor, Embedder, MLP, SIGReg
+from residual_flow import ResidualFlow
 from utils import get_column_normalizer, get_img_preprocessor, ModelObjectCallBack
+
+
+def residual_flow_loss(model, pred_emb, tgt_emb, ctx_emb, ctx_act, cfg):
+    """Flow-matching loss on normalized latent prediction residuals."""
+
+    residual_cfg = cfg.loss.residual_flow
+    residual = tgt_emb - pred_emb
+    model.update_residual_scale(
+        residual,
+        decay=residual_cfg.ema_decay,
+        eps=residual_cfg.scale_eps,
+    )
+
+    target_residual = model.normalize_residual(
+        residual, eps=residual_cfg.scale_eps
+    )
+    if residual_cfg.detach_residual_target:
+        target_residual = target_residual.detach()
+
+    eps = torch.randn_like(target_residual)
+    tau = torch.rand(
+        *target_residual.shape[:-1],
+        1,
+        device=target_residual.device,
+        dtype=target_residual.dtype,
+    )
+    z_tau = (1.0 - tau) * eps + tau * target_residual
+    target_velocity = target_residual - eps
+
+    condition = model.residual_condition(ctx_emb, ctx_act, pred_emb)
+    if residual_cfg.detach_condition:
+        condition = condition.detach()
+
+    pred_velocity = model.residual_flow(tau, z_tau, condition)
+    return (pred_velocity - target_velocity).pow(2).mean()
 
 
 def lejepa_forward(self, batch, stage, cfg):
@@ -40,6 +76,19 @@ def lejepa_forward(self, batch, stage, cfg):
     output["pred_loss"] = (pred_emb - tgt_emb).pow(2).mean()
     output["sigreg_loss"]= self.sigreg(emb.transpose(0, 1))
     output["loss"] = output["pred_loss"] + lambd * output["sigreg_loss"]  
+
+    residual_cfg = cfg.loss.get("residual_flow")
+    if (
+        residual_cfg is not None
+        and residual_cfg.get("enabled", False)
+        and self.model.residual_flow is not None
+    ):
+        output["residual_fm_loss"] = residual_flow_loss(
+            self.model, pred_emb, tgt_emb, ctx_emb, ctx_act, cfg
+        )
+        output["loss"] = (
+            output["loss"] + residual_cfg.weight * output["residual_fm_loss"]
+        )
 
     losses_dict = {f"{stage}/{k}": v.detach() for k, v in output.items() if "loss" in k}
     self.log_dict(losses_dict, on_step=True, sync_dist=True)
@@ -115,12 +164,25 @@ def run(cfg):
         norm_fn=torch.nn.BatchNorm1d,
     )
 
+    residual_flow = None
+    residual_scale = None
+    residual_cfg = cfg.loss.get("residual_flow")
+    if residual_cfg is not None and residual_cfg.get("enabled", False):
+        residual_flow = ResidualFlow(
+            residual_dim=embed_dim,
+            condition_dim=3 * embed_dim,
+            **OmegaConf.to_container(residual_cfg.kwargs, resolve=True),
+        )
+        residual_scale = torch.ones(embed_dim)
+
     world_model = JEPA(
         encoder=encoder,
         predictor=predictor,
         action_encoder=action_encoder,
         projector=projector,
         pred_proj=predictor_proj,
+        residual_flow=residual_flow,
+        residual_scale=residual_scale,
     )
 
     optimizers = {

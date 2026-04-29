@@ -62,3 +62,15 @@ loss:
     kwargs:
       knots: 17
       num_proj: 1024
+  residual_flow:
+    enabled: False
+    weight: 1.0
+    ema_decay: 0.99
+    scale_eps: 0.001
+    detach_residual_target: True
+    detach_condition: False
+    kwargs:
+      hidden_dim: 512
+      depth: 4
+      time_dim: 128
+      dropout: 0.0
