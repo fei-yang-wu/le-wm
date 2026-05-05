@@ -1,6 +1,6 @@
 # Flow-Matched Residual Kernels Plan
 
-Last updated: 2026-04-29
+Last updated: 2026-05-05
 
 ## Goal
 
@@ -23,19 +23,24 @@ learns a distribution over normalized latent residuals.
 ## Current Status
 
 - Fork remote is set to `git@github.com:fei-yang-wu/le-wm.git`.
-- Working branch is `latent-residual-flow`.
-- Branch was pushed to the fork.
+- Working branch is `latent-residual-flow`, pushed to the fork.
 - Commit `ca701a0` added the first latent residual-flow training scaffold.
 - Commit `7b23d64` added project instructions and this planning tracker.
-- `sky1` clone path: `fwu91@sky1:~/flash/Research/WM`.
-- `sky1` setup notes: `docs/sky1-setup.md`.
-- Project data root: `~/flash/Research/WM/data`.
+- `sky1` clone path: `fwu91@sky1:~/flash/Research/WM`. Setup notes:
+  `docs/sky1-setup.md`. Project data root: `~/flash/Research/WM/data`.
 - Default Slurm target: `partition=wu-lab`, `qos=short`, `gpus-per-node=a40:1`,
-  `cpus-per-task=6`.
-- Overcap fallback: submit with `--partition=overcap --account=overcap` when
-  `wu-lab` is busy.
+  `cpus-per-task=6`. Overcap fallback: `--partition=overcap --account=overcap`.
 - Vanilla LeWM behavior remains the default because residual flow is disabled in
   config unless `loss.residual_flow.enabled=true`.
+- **M0 complete**: sky1 install verified, PushT downloaded, smoke import +
+  tiny residual-flow training run passed on overcap A40
+  (see Experiment Log entry `2026-04-29 / fe29db85`).
+- **M1 smoke complete**: the first full-dataset, 1-epoch residual-flow PushT
+  run completed on overcap A40 and saved checkpoints. The full fair comparison
+  still needs a same-budget vanilla run and a post-`time_scale` residual-flow
+  rerun.
+- **M2 active**: residual distribution evaluation tooling is being added under
+  `scripts/eval/` and `scripts/slurm/`.
 
 ## Implemented
 
@@ -56,7 +61,11 @@ learns a distribution over normalized latent residuals.
   - joint objective `LeWM loss + lambda_fm * residual_fm_loss`.
 - Added `config/train/lewm.yaml` options under `loss.residual_flow`.
 - Added Slurm helpers under `scripts/slurm/` for PushT residual-flow training.
+- Added Slurm helpers under `scripts/slurm/` for vanilla PushT training.
+- Added `scripts/eval/evaluate_latent_residuals.py` for held-out latent
+  residual distribution metrics.
 - Added `scripts/data/download_pusht.sh` for project-local PushT data setup.
+- Added `wiki/` as the compact project context front door.
 
 ## Verification So Far
 
@@ -70,17 +79,17 @@ learns a distribution over normalized latent residuals.
 - PushT dataset is downloaded under `data/pusht_expert_train.h5`.
 - Slurm smoke import job passed on overcap A40.
 - Tiny residual-flow training smoke passed on overcap A40.
+- One-epoch residual-flow PushT job `3030237` completed on overcap A40 in
+  `01:42:04` with finite validation metrics and saved checkpoints.
+- Residual evaluation script passes syntax checks locally; first Sky1 evaluation
+  job is the next verification step.
 
 ## Recommended Compute
 
-LeWM reports training on a single NVIDIA L40S GPU. For this project:
+Active development runs on sky1 (`partition=wu-lab`, A40) with overcap
+fallback. See `docs/sky1-setup.md` and `scripts/slurm/`.
 
-- Preferred: 1x L40S, A100, A6000, or similar 40-48GB GPU.
-- Minimum first attempt: 1x 24GB GPU with smaller batch size.
-- Suggested first dataset: PushT.
-- Suggested first run: 10 epochs, residual flow enabled.
-
-Example:
+First real run target: PushT, 10 epochs, residual flow enabled.
 
 ```bash
 python train.py data=pusht \
@@ -89,15 +98,8 @@ python train.py data=pusht \
   wandb.enabled=false
 ```
 
-For 24GB GPUs:
-
-```bash
-python train.py data=pusht \
-  trainer.max_epochs=10 \
-  loader.batch_size=32 \
-  loss.residual_flow.enabled=true \
-  wandb.enabled=false
-```
+Future portability (other 24GB+ GPUs, e.g., L40S/A100/A6000): cap
+`loader.batch_size=32` and rely on the same Hydra overrides.
 
 ## Milestones
 
@@ -120,6 +122,14 @@ python train.py data=pusht \
   - total loss
 - Save checkpoint paths and commit hash.
 
+**Success criteria:**
+
+- `residual_fm_loss` decreases monotonically over the run and ends below the
+  initial `‖x − ε‖²` plateau (≈ 2 in normalized space) by a clear margin.
+- Vanilla `pred_loss` of the joint run stays within ±10% of the LeWM-only
+  baseline (no regression of the deterministic objective).
+- Both runs reach the same epoch count without crashes; checkpoints loadable.
+
 ### M2: Prediction Distribution Evaluation
 
 - Build an evaluation script for held-out latent residuals.
@@ -131,8 +141,18 @@ python train.py data=pusht \
   - latent MSE,
   - residual covariance match,
   - sample coverage,
+  - per-dim quantile calibration (ECE),
+  - NFE used to draw each sample,
   - weak metrics such as expected goal distance or contact indicators if
     available.
+
+**Success criteria:**
+
+- Flow residual covariance Frobenius error to held-out empirical covariance
+  beats the per-dim Gaussian baseline by ≥ 20%.
+- Per-dim quantile ECE for the flow ≤ Gaussian baseline ECE.
+- Flow samples cover the empirical residual support (no obvious mode collapse
+  on a 2D PCA projection).
 
 ### M3: Stochastic Planning
 
@@ -168,15 +188,25 @@ python train.py data=pusht \
 
 ## Near-Term TODO
 
-- Resolve GPU-machine setup and dependency versions.
-- Confirmed `stable-worldmodel[train]` dependency install on `sky1` completes.
-- Confirmed `datasets>=2.20,<3` is needed on top of the base train install.
-- Download PushT into `data/pusht_expert_train.h5`.
-- Submit a tiny Slurm smoke job on `sky1`.
-- Add a dedicated residual evaluation script.
-- Add a deterministic Gaussian residual baseline.
-- Expose stochastic planning in `get_cost` or evaluation config.
-- Decide whether to keep flow targets detached for the first real run.
+Open items only — completed setup work has moved to **Current Status / M0**.
+
+1. Re-run the residual-flow smoke on sky1 after the
+   `SinusoidalTimeEmbedding` `time_scale` fix (commit lands in
+   `residual_flow.py`); confirm `residual_fm_loss` dynamics change.
+2. Add a shape-sanity unit test for `JEPA.residual_condition` covering
+   `num_preds ∈ {1, 2}` and `history_size ∈ {3, 4}` so the
+   `[ctx_emb, ctx_act, pred_emb]` concat is verified beyond the current
+   `num_preds=1, history_size=3` happy path.
+3. Decide and document the default for `loss.residual_flow.detach_condition`
+   for the first real M1 run. Recommended starting point:
+   `detach_condition=true` for an apples-to-apples comparison vs. vanilla
+   LeWM, then ablate in M4.
+4. Run the residual evaluation script (M2 entry point) on the 1-epoch
+   checkpoint and record the JSON result.
+5. Add an optional full-covariance Gaussian oracle baseline for analysis only;
+   keep the diagonal Gaussian baseline as the fair deployable baseline.
+6. Expose a stochastic-rollout switch in `get_cost` / evaluation config so
+   M3 planning experiments can be triggered without code changes.
 
 ## Experiment Log Template
 
@@ -190,6 +220,7 @@ Config overrides:
 Checkpoint:
 Training result:
 Evaluation result:
+NFE (sampling):
 Notes:
 Next action:
 ```
@@ -223,6 +254,39 @@ Next action:
   Submit a short but real PushT residual-flow run, then add evaluation tooling.
 ```
 
+```text
+Date: 2026-04-29
+Commit: df52ab4
+Machine/GPU: sky1 Slurm overcap, node deebot, 1x NVIDIA A40
+Dataset: PushT, data/pusht_expert_train.h5
+Command:
+  MAX_EPOCHS=1 BATCH_SIZE=128 NUM_WORKERS=6 \
+  scripts/slurm/submit_pusht_residual_flow.sh --partition=overcap --account=overcap --time=02:00:00
+Checkpoint:
+  data/pusht_rflow_1epoch/lewm_rflow_pusht_1epoch_epoch_1_object.ckpt
+  data/pusht_rflow_1epoch/lewm_rflow_pusht_1epoch_weights.ckpt
+Training result:
+  Completed job 3030237 in 01:42:04 with exit code 0:0.
+  fit/loss: 1.474353551864624
+  fit/pred_loss: 0.07256205379962921
+  fit/residual_fm_loss: 1.2396820783615112
+  fit/sigreg_loss: 1.796875
+  validate/loss: 1.5134869813919067
+  validate/pred_loss: 0.06748738884925842
+  validate/residual_fm_loss: 1.2505505084991455
+  validate/sigreg_loss: 2.1714375019073486
+Evaluation result:
+  Pending residual distribution evaluation.
+NFE (sampling):
+  Pending.
+Notes:
+  This checkpoint predates the time_scale=1000 time-embedding default. Object
+  checkpoint loading preserves old behavior with a compatibility fallback.
+Next action:
+  Run scripts/eval/evaluate_latent_residuals.py on the held-out split and
+  compare flow samples against the diagonal Gaussian baseline.
+```
+
 ## Key Design Decisions
 
 - Start in latent space, not pixels.
@@ -231,3 +295,12 @@ Next action:
 - Train the stochastic model with flow matching, not likelihood.
 - Treat stochastic planning as a later milestone after training and residual
   sampling are verified.
+- Residual kernel is **one-step** (predicts `z_{t+1} − Φ(z_{≤t}, u_{≤t})`).
+  Multi-horizon consistency is an explicit open problem — see M4
+  ("one-step residual kernel versus multi-horizon residual kernels").
+- For the first M1 run, default to **detached residual targets** and detached
+  condition so the flow objective does not perturb the deterministic
+  predictor; the joint-gradient variant is an M4 ablation.
+- Time-conditioning uses a sinusoidal embedding scaled for τ ∈ [0, 1]
+  (`time_scale=1000` so the standard `max_period=10000` regime applies);
+  raw τ without scaling collapses the high-frequency channels.

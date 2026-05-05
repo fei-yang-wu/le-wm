@@ -8,12 +8,25 @@ import torch.nn.functional as F
 
 
 class SinusoidalTimeEmbedding(nn.Module):
-    """Embed scalar flow time values in [0, 1]."""
+    """Embed scalar flow time values in [0, 1].
 
-    def __init__(self, dim: int, max_period: float = 10000.0):
+    `time_scale` rescales tau before the standard transformer/diffusion
+    sinusoidal embedding so that tau in [0, 1] spans the same effective
+    frequency range as integer timesteps in [0, time_scale]. Without it,
+    `max_period=10000` collapses the high-frequency channels because
+    `tau * freq` never exceeds 1.
+    """
+
+    def __init__(
+        self,
+        dim: int,
+        max_period: float = 10000.0,
+        time_scale: float = 1000.0,
+    ):
         super().__init__()
         self.dim = dim
         self.max_period = max_period
+        self.time_scale = time_scale
 
     def forward(self, tau: torch.Tensor) -> torch.Tensor:
         if tau.ndim == 0:
@@ -27,7 +40,10 @@ class SinusoidalTimeEmbedding(nn.Module):
             * torch.arange(half, device=tau.device, dtype=torch.float32)
             / max(half - 1, 1)
         )
-        angles = tau.float() * freqs
+        # Older object checkpoints were saved before `time_scale` existed.
+        # Preserve their original behavior when loading them for evaluation.
+        time_scale = getattr(self, "time_scale", 1.0)
+        angles = tau.float() * time_scale * freqs
         emb = torch.cat([angles.sin(), angles.cos()], dim=-1)
 
         if emb.size(-1) < self.dim:

@@ -68,7 +68,7 @@ loss:
     ema_decay: 0.99
     scale_eps: 0.001
     detach_residual_target: True
-    detach_condition: False
+    detach_condition: True
     kwargs:
       hidden_dim: 512
       depth: 4

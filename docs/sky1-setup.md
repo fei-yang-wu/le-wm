@@ -130,6 +130,30 @@ EXTRA_OVERRIDES='+trainer.limit_train_batches=2 +trainer.limit_val_batches=1' \
   scripts/slurm/submit_pusht_residual_flow.sh --partition=overcap --account=overcap
 ```
 
+## Residual Distribution Evaluation
+
+Evaluate the 1-epoch residual-flow checkpoint:
+
+```bash
+MAX_BATCHES=32 NUM_SAMPLES=16 FLOW_STEPS=8 \
+  scripts/slurm/submit_evaluate_pusht_residuals.sh \
+  --partition=overcap --account=overcap --time=01:00:00
+```
+
+Default checkpoint:
+
+```text
+data/pusht_rflow_1epoch/lewm_rflow_pusht_1epoch_epoch_1_object.ckpt
+```
+
+Default JSON output:
+
+```text
+data/eval/pusht_rflow_1epoch_residual_eval.json
+```
+
+Override either path with `CHECKPOINT=...` or `OUTPUT=...`.
+
 Check jobs:
 
 ```bash

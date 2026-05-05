@@ -10,12 +10,15 @@ stochastic transition kernel.
 
 - Primary branch for this work: `latent-residual-flow`
 - Fork remote: `git@github.com:fei-yang-wu/le-wm.git`
+- Start future context refreshes from `wiki/README.md`, then read
+  `wiki/status.md` and `wiki/evaluation.md` before touching code.
 - Main implementation files:
   - `jepa.py`: LeWM model, rollout, residual sampling helpers
   - `train.py`: training loop and residual flow-matching loss
   - `residual_flow.py`: conditional vector field for latent residuals
   - `config/train/lewm.yaml`: residual-flow Hydra config
 - Planning and progress tracker: `docs/project-plan.md`
+- Wiki front door and compact project memory: `wiki/`
 
 ## Development Principles
 
@@ -98,13 +101,27 @@ Slurm smoke job on `sky1`:
 scripts/slurm/submit_smoke_import.sh
 ```
 
+Residual distribution evaluation on `sky1`:
+
+```bash
+scripts/slurm/submit_evaluate_pusht_residuals.sh
+```
+
 The default `sky1` Slurm target is `partition=wu-lab`, `qos=short`,
 `gpus-per-node=a40:1`, and `cpus-per-task=6`.
+
+If `wu-lab` is busy, use:
+
+```bash
+scripts/slurm/submit_evaluate_pusht_residuals.sh --partition=overcap --account=overcap
+```
 
 ## Experiment Hygiene
 
 - Log dataset, commit hash, GPU type, batch size, epochs, residual-flow config,
   and checkpoint path for every run.
+- Record major status changes in `wiki/status.md` and keep experiment-specific
+  details in `docs/project-plan.md`.
 - Compare against vanilla LeWM before interpreting stochastic improvements.
 - Track both prediction metrics and control metrics.
 - Do not overwrite or delete checkpoints unless explicitly requested.
