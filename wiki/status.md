@@ -56,9 +56,23 @@ One-epoch residual-flow run:
 
 ## Current Focus
 
-M2 evaluation is active. We need to measure whether the learned flow samples
-held-out latent residuals better than the diagonal Gaussian baseline induced by
-the residual scale.
+M2 evaluation has a first smoke result for the 1-epoch checkpoint. The learned
+flow improves covariance matching and central interval coverage versus the
+diagonal Gaussian baseline, but its quantile ECE is slightly worse.
+
+First residual evaluation:
+
+- Slurm job: `3080285`.
+- Result: completed in `00:02:05` with exit code `0:0`.
+- JSON output: `data/eval/pusht_rflow_1epoch_residual_eval.json`.
+- Held-out targets: `6144`; latent dim: `192`; flow NFE: `8`.
+- Deterministic latent MSE: `0.06709294766187668`.
+- Flow covariance relative Frobenius: `0.4756399989128113`.
+- Gaussian covariance relative Frobenius: `0.8401789665222168`.
+- Flow 90% interval coverage: `0.8628132939338684`.
+- Gaussian 90% interval coverage: `0.8166148066520691`.
+- Flow quantile ECE: `0.02631089650094509`.
+- Gaussian quantile ECE: `0.024060126394033432`.
 
 ## Open Risks
 

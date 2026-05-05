@@ -4,19 +4,17 @@ Last updated: 2026-05-05
 
 ## Now
 
-1. Run residual distribution evaluation for the 1-epoch PushT checkpoint.
-2. Read the JSON and decide whether the current flow is doing anything beyond
-   the diagonal Gaussian baseline.
-3. Record the result in `docs/project-plan.md`.
+1. Let the same-budget vanilla PushT job finish and record its metrics.
+2. Re-run residual-flow training after the `time_scale=1000` embedding fix and
+   `detach_condition=true` default.
+3. Evaluate the new checkpoint with the same residual-distribution script.
 
 ## Next Experiment Batch
 
-1. Run vanilla PushT for the same epoch budget.
-2. Re-run residual-flow training after the `time_scale=1000` embedding fix and
-   `detach_condition=true` default.
-3. Evaluate both the old 1-epoch checkpoint and the new checkpoint with the same
+1. Compare the completed vanilla run against the old 1-epoch residual-flow run.
+2. Evaluate both the old 1-epoch checkpoint and the new checkpoint with the same
    evaluation script.
-4. If the flow is competitive on covariance/calibration, start a 10-epoch
+3. If the flow is competitive on covariance/calibration, start a 10-epoch
    residual-flow run.
 
 ## Implementation Backlog

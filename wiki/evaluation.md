@@ -88,3 +88,32 @@ Research-grade evidence still requires:
 - longer residual-flow training,
 - multiple random seeds,
 - planning or weak-metric evaluation tied to task cost.
+
+## First Result
+
+Run:
+
+```text
+Slurm job: 3080285
+Checkpoint: data/pusht_rflow_1epoch/lewm_rflow_pusht_1epoch_epoch_1_object.ckpt
+Output: data/eval/pusht_rflow_1epoch_residual_eval.json
+```
+
+Summary:
+
+- The script completed successfully on `wu-lab` in `00:02:05`.
+- `flow.cov_relative_frobenius = 0.4756399989128113`.
+- `gaussian.cov_relative_frobenius = 0.8401789665222168`.
+- `flow.interval_90_coverage = 0.8628132939338684`.
+- `gaussian.interval_90_coverage = 0.8166148066520691`.
+- `flow.quantile_ece = 0.02631089650094509`.
+- `gaussian.quantile_ece = 0.024060126394033432`.
+- `flow.eval_fm_loss = 1.2551902532577515`.
+
+Interpretation:
+
+The first residual-flow checkpoint has a real distributional signal: covariance
+matching improves substantially and coverage moves closer to 0.90. Calibration
+by quantile ECE is not yet better than Gaussian, so the next run should not be
+framed as solved. It is a good reason to continue with a clean same-budget
+baseline and a post-`time_scale=1000` residual-flow rerun.

@@ -39,8 +39,9 @@ learns a distribution over normalized latent residuals.
   run completed on overcap A40 and saved checkpoints. The full fair comparison
   still needs a same-budget vanilla run and a post-`time_scale` residual-flow
   rerun.
-- **M2 active**: residual distribution evaluation tooling is being added under
-  `scripts/eval/` and `scripts/slurm/`.
+- **M2 smoke complete**: residual distribution evaluation ran on the 1-epoch
+  checkpoint. The flow improved covariance matching and 90% interval coverage
+  versus the diagonal Gaussian baseline, but quantile ECE was slightly worse.
 
 ## Implemented
 
@@ -81,8 +82,9 @@ learns a distribution over normalized latent residuals.
 - Tiny residual-flow training smoke passed on overcap A40.
 - One-epoch residual-flow PushT job `3030237` completed on overcap A40 in
   `01:42:04` with finite validation metrics and saved checkpoints.
-- Residual evaluation script passes syntax checks locally; first Sky1 evaluation
-  job is the next verification step.
+- Residual evaluation script passes syntax checks locally.
+- Residual evaluation job `3080285` completed on `wu-lab` in `00:02:05` and
+  wrote `data/eval/pusht_rflow_1epoch_residual_eval.json`.
 
 ## Recommended Compute
 
@@ -201,8 +203,7 @@ Open items only — completed setup work has moved to **Current Status / M0**.
    for the first real M1 run. Recommended starting point:
    `detach_condition=true` for an apples-to-apples comparison vs. vanilla
    LeWM, then ablate in M4.
-4. Run the residual evaluation script (M2 entry point) on the 1-epoch
-   checkpoint and record the JSON result.
+4. Let the same-budget vanilla PushT job finish and record its metrics.
 5. Add an optional full-covariance Gaussian oracle baseline for analysis only;
    keep the diagonal Gaussian baseline as the fair deployable baseline.
 6. Expose a stochastic-rollout switch in `get_cost` / evaluation config so
@@ -276,15 +277,30 @@ Training result:
   validate/residual_fm_loss: 1.2505505084991455
   validate/sigreg_loss: 2.1714375019073486
 Evaluation result:
-  Pending residual distribution evaluation.
+  Slurm job 3080285 completed in 00:02:05 with exit code 0:0.
+  JSON: data/eval/pusht_rflow_1epoch_residual_eval.json
+  num_targets: 6144
+  latent_dim: 192
+  deterministic.latent_mse: 0.06709294766187668
+  deterministic.normalized_residual_mse: 1.0047131776809692
+  flow.cov_relative_frobenius: 0.4756399989128113
+  gaussian.cov_relative_frobenius: 0.8401789665222168
+  flow.interval_90_coverage: 0.8628132939338684
+  gaussian.interval_90_coverage: 0.8166148066520691
+  flow.quantile_ece: 0.02631089650094509
+  gaussian.quantile_ece: 0.024060126394033432
+  flow.eval_fm_loss: 1.2551902532577515
 NFE (sampling):
-  Pending.
+  8
 Notes:
   This checkpoint predates the time_scale=1000 time-embedding default. Object
   checkpoint loading preserves old behavior with a compatibility fallback.
+  The flow has a real smoke-level distributional signal: covariance matching
+  and interval coverage beat the diagonal Gaussian baseline. Quantile ECE does
+  not beat Gaussian yet, so this is encouraging but not conclusive.
 Next action:
-  Run scripts/eval/evaluate_latent_residuals.py on the held-out split and
-  compare flow samples against the diagonal Gaussian baseline.
+  Let the vanilla PushT baseline finish, then re-run residual-flow training with
+  the time_scale=1000 embedding fix and detach_condition=true default.
 ```
 
 ## Key Design Decisions
